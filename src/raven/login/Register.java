@@ -17,6 +17,7 @@ import services.AuthService;
 import core.Session;
 import model.User;
 import databaseAccess.UserDAO;
+import raven.model.ModelUser;
 
 /**
  *
@@ -127,7 +128,9 @@ private void init() {
                 User user = UserDAO.register(name, email, password);
                 
                 Session.currentUser = user;
-
+                FormManager.login(new ModelUser(email, true)); //delete ModelUser
+                
+                
             } else {
                 lblMessage.setText(result);
             }

@@ -8,11 +8,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 
 public class DBConnection {
-
-
     private static Connection conn;
     private static final String URL = "jdbc:sqlite:app.db";
-
     public static Connection getConnection() {
         try {
             if (conn == null || conn.isClosed()) {
