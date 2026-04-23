@@ -93,8 +93,6 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
             new Item("Budgets", "wallet.svg"),
             new Item("Goals", "target.svg"),
             new Item("Analytics", "analytics.svg"),
-            new Item("AI Insights", "lightbulb.svg"),
-            new Item("Family Budget", "users.svg"),
             new Item("Notifications", "bell.svg"),
             new Item("Logout", "logout.svg"),
         };
@@ -189,7 +187,12 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                         case 3:
                             FormManager.showForm(new GoalsForm());
                             break;
-                        case 8:
+                        case 4:
+                            FormManager.showForm(new ReportForm());
+                            break;    
+                        case 5:
+                            break;   
+                        case 6:
                             FormManager.gotoLogin();
                             break;
                     }

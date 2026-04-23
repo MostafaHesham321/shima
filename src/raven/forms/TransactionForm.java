@@ -8,7 +8,7 @@ package raven.forms;
  *
  * @author MH
  */
-import core.Session;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import transaction.*;
@@ -17,14 +17,14 @@ import java.awt.*;
 import java.util.ArrayList;
 import net.miginfocom.swing.MigLayout;
 import raven.components.SimpleForm;
-import databaseAccess.TransactionDAO;
+import services.TransactionService;
+import java.util.List;
 
 public class TransactionForm extends SimpleForm {
 
     private JPanel container;
     private JButton btnAdd;
-
-    private ArrayList<Transaction> transactions = new ArrayList<>();
+    private List<Transaction> transactions = new ArrayList<>();
 
     public TransactionForm() {
         init();
@@ -35,9 +35,8 @@ public class TransactionForm extends SimpleForm {
 
         setLayout(new BorderLayout());
 
-        // ===== TOP =====
         JPanel top = new JPanel(new BorderLayout());
-        top.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+        top.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JLabel title = new JLabel("Transactions");
         title.setFont(new Font("Segoe UI", Font.BOLD, 22));
@@ -47,9 +46,8 @@ public class TransactionForm extends SimpleForm {
         top.add(title, BorderLayout.WEST);
         top.add(btnAdd, BorderLayout.EAST);
 
-        // ===== CONTAINER =====
         container = new JPanel(new GridLayout(0, 2, 10, 10));
-        container.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+        container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         add(top, BorderLayout.NORTH);
         add(new JScrollPane(container), BorderLayout.CENTER);
@@ -57,13 +55,10 @@ public class TransactionForm extends SimpleForm {
         btnAdd.addActionListener(e -> openDialog());
     }
 
-    // ================= Transactions DATA =================
+    // ================= LOAD =================
     private void loadTransactions() {
 
-        int userId = Session.currentUser.getId();
-
-        transactions.clear();
-        transactions.addAll(TransactionDAO.getAll(userId));
+        transactions = TransactionService.getAllTransactions();
 
         renderTransactions();
     }
@@ -110,9 +105,17 @@ public class TransactionForm extends SimpleForm {
         name.setForeground(Color.WHITE);
         name.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
-        JLabel meta = new JLabel(
-                "Category · " + String.valueOf(t.getDate())
-        );
+        String category;
+
+        if (t instanceof Expense) {
+            category = ((Expense) t).getCategory().name();
+        } else {
+            category = ((Income) t).getSource().name();
+        }
+
+        JLabel meta = new JLabel(category + " · " + t.getDate());
+        meta.setForeground(new Color(140, 140, 160));
+        meta.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         meta.setForeground(new Color(140, 140, 160));
         meta.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
@@ -155,13 +158,11 @@ public class TransactionForm extends SimpleForm {
 
         // ================= ACTIONS =================
         edit.addActionListener(e -> {
-            System.out.println("EDIT: " + t.getDescription());
-            // بعدين نربطه بـ DB update
+            openEditDialog(t);
         });
 
         delete.addActionListener(e -> {
-            System.out.println("DELETE: " + t.getId());
-            // بعدين TransactionDAO.delete(t.getId())
+        TransactionService.deleteTransaction(t);
         });
 
         // ================= LAYOUT =================
@@ -185,15 +186,6 @@ public class TransactionForm extends SimpleForm {
         return card;
     }
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     // ================= DIALOG =================
     private void openDialog() {
@@ -297,9 +289,8 @@ public class TransactionForm extends SimpleForm {
         overlay.setVisible(true);
     }
 
- 
-    
-    
+
+
     private Date parseDate(String text) {
         try {
             return new SimpleDateFormat("yyyy-MM-dd").parse(text);
@@ -309,16 +300,161 @@ public class TransactionForm extends SimpleForm {
     }
     
     
+    
+    private void openEditDialog(Transaction t) {
+
+        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
+
+        JDialog overlay = new JDialog(frame);
+        overlay.setUndecorated(true);
+        overlay.setSize(frame.getSize());
+        overlay.setLocationRelativeTo(frame);
+        overlay.setBackground(new Color(0, 0, 0, 200));
+        overlay.setLayout(new GridBagLayout());
+
+        JPanel panel = new JPanel(new MigLayout(
+                "wrap 1, fillx, insets 20",
+                "[grow,fill]"
+        ));
+
+        panel.setPreferredSize(new Dimension(420, 420));
+        panel.setBackground(new Color(30, 30, 40));
+
+        // ================= INPUTS =================
+        JComboBox<String> cbType = new JComboBox<>(new String[]{"INCOME", "EXPENSE"});
+        JTextField txtDesc = new JTextField(t.getDescription());
+        JTextField txtAmount = new JTextField(String.valueOf(t.getAmount()));
+        JTextField txtDate = new JTextField(new SimpleDateFormat("yyyy-MM-dd").format(t.getDate()));
+
+        JComboBox<IncomeSource> cbSource = new JComboBox<>(IncomeSource.values());
+        JComboBox<ExpenseCategory> cbCategory = new JComboBox<>(ExpenseCategory.values());
+        JComboBox<PaymentMethod> cbPayment = new JComboBox<>(PaymentMethod.values());
+
+        // fill data
+        if (t instanceof Income) {
+            cbType.setSelectedItem("INCOME");
+            cbSource.setSelectedItem(((Income) t).getSource());
+        } else {
+            cbType.setSelectedItem("EXPENSE");
+            cbCategory.setSelectedItem(((Expense) t).getCategory());
+            cbPayment.setSelectedItem(((Expense) t).getPaymentMethod());
+        }
+
+        JButton btnSave = new JButton("Update Transaction");
+
+        JLabel lblMsg = new JLabel(" ");
+
+        // ================= UI =================
+        panel.add(new JLabel("Type"));
+        panel.add(cbType);
+
+        panel.add(new JLabel("Description"));
+        panel.add(txtDesc);
+
+        panel.add(new JLabel("Amount"));
+        panel.add(txtAmount);
+
+        panel.add(new JLabel("Date"));
+        panel.add(txtDate);
+
+        panel.add(new JLabel("Source / Category"));
+        panel.add(cbSource);
+        panel.add(cbCategory);
+        panel.add(cbPayment);
+
+        panel.add(lblMsg);
+        panel.add(btnSave);
+
+        // toggle
+        Runnable toggle = () -> {
+            boolean income = cbType.getSelectedItem().equals("INCOME");
+
+            cbSource.setVisible(income);
+            cbCategory.setVisible(!income);
+            cbPayment.setVisible(!income);
+        };
+
+        cbType.addActionListener(e -> toggle.run());
+        toggle.run();
+
+        // ================= CLOSE OUTSIDE =================
+        overlay.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                overlay.dispose();
+            }
+        });
+
+        panel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                e.consume();
+            }
+        });
+        
+        // ================= SAVE =================
+        btnSave.addActionListener(e -> {
+
+        try {
+
+            Transaction updated;
+
+            if (t instanceof Income) {
+
+                updated = new Income(
+                        t.getId(),
+                        Double.parseDouble(txtAmount.getText()),
+                        parseDate(txtDate.getText()),
+                        txtDesc.getText(),
+                        (IncomeSource) cbSource.getSelectedItem()
+                );
+
+            } else {
+
+                updated = new Expense(
+                        t.getId(),
+                        Double.parseDouble(txtAmount.getText()),
+                        parseDate(txtDate.getText()),
+                        txtDesc.getText(),
+                        (PaymentMethod) cbPayment.getSelectedItem(),
+                        (ExpenseCategory) cbCategory.getSelectedItem()
+                );
+            }
+
+            String result = TransactionService.editTransaction(t, updated);
+
+            if ("SUCCESS".equals(result)) {
+                loadTransactions();
+                overlay.dispose();
+            } else {
+                lblMsg.setForeground(Color.RED);
+                lblMsg.setText(result);
+            }
+
+            } catch (Exception ex) {
+                lblMsg.setForeground(Color.RED);
+                lblMsg.setText("Invalid input");
+            }
+    });
+
+        overlay.add(panel);
+        overlay.setVisible(true);
+    }
+    
+    
+    
+    
+    
     private void saveTransaction(
-            JComboBox<String> cbType,
-            JTextField txtDesc,
-            JTextField txtAmount,
-            JTextField txtDate,
-            JComboBox<IncomeSource> cbSource,
-            JComboBox<ExpenseCategory> cbCategory,
-            JComboBox<PaymentMethod> cbPayment,
-            JDialog overlay
-    ) {
+        JComboBox<String> cbType,
+        JTextField txtDesc,
+        JTextField txtAmount,
+        JTextField txtDate,
+        JComboBox<IncomeSource> cbSource,
+        JComboBox<ExpenseCategory> cbCategory,
+        JComboBox<PaymentMethod> cbPayment,
+        JDialog overlay
+) {
 
         try {
 
@@ -350,22 +486,18 @@ public class TransactionForm extends SimpleForm {
                 );
             }
 
-            // user id
-            t.setUserId(Session.currentUser.getId());
+            String result = TransactionService.createTransaction(t);
 
-            // DB insert
-            boolean ok = TransactionDAO.insert(t);
-
-            if (ok) {
-                transactions.add(t);
-                renderTransactions();
+            if ("SUCCESS".equals(result)) {
+                loadTransactions();
                 overlay.dispose();
             } else {
-                JOptionPane.showMessageDialog(null, "Insert Failed!");
+                JOptionPane.showMessageDialog(null, result);
             }
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(null, ex.getMessage());
+            JOptionPane.showMessageDialog(null, "Invalid input");
         }
     }
 }
+    

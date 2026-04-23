@@ -12,7 +12,7 @@ import java.awt.Font;
 import javax.swing.JFrame;
 import javax.swing.UIManager;
 import raven.components.Background;
-import raven.forms.DashboardForm;
+import raven.forms.ReportForm;
 import raven.menu.FormManager;
 import raven.popup.GlassPanePopup;
 
@@ -42,7 +42,7 @@ public class Application extends JFrame {
         // applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
         GlassPanePopup.install(this);
         FormManager.install(this, UNDECORATED);
-        FormManager.showForm(new DashboardForm());
+        FormManager.showForm(new ReportForm());
         FormManager.gotoLogin();
         // applyComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
     }
